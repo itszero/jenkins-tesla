@@ -304,6 +304,16 @@ fun main() {
             Logs.write("Status: $debugVehicleStatus")
             annotateCharging(vehicleStatus.charging)
 
+            // If the car is charging, actively extend sleep block. Otherwise we'll try to let it sleep
+            // right after unplugging due to no movement.
+            if (vehicleStatus.charging) {
+                Logs.write("The car is charging. Keep blocking sleep for 30mins")
+                Config.update({ Config.vehicleId eq vehicleId }) {
+                    it[blockSleepUntil] = DateTime.now().plusMinutes(30)
+                    it[tryToSleepSince] = null
+                }
+            }
+
             // If the current mileage is the same as 10 minutes ago, let's try to allow the car to sleep
             val mileageWhileAgo = transaction {
                 val lastStatus = Metrics.select {
