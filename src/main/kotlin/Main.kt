@@ -172,7 +172,9 @@ fun annotateCharging(charging: Boolean) {
     }
 
     val wasCharging = transaction {
-        val lastStatus = Metrics.selectAll().lastOrNull()
+        val lastStatus = Metrics.selectAll()
+            .sortedByDescending { Metrics.timestamp }
+            .lastOrNull()
         if (lastStatus != null) {
             lastStatus[Metrics.charging]
         } else {
