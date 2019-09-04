@@ -6,7 +6,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
 object Config : Table() {
-    val vehicleId = varchar("vehicle_id", 64)
+    val vin = varchar("vin", 64)
     val accessToken = varchar("access_token", 64)
     val refreshToken = varchar("refresh_token", 64)
     val tryToSleepSince = datetime("try_to_sleep_time").nullable()

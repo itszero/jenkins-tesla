@@ -66,7 +66,7 @@ fun refreshToken(refreshToken: String): RefreshTokenResponse {
     )
 }
 
-fun getVehicle(token: String, vehicleId: String): CarOverview {
+fun getVehicle(token: String, vin: String): CarOverview {
     val (_, resp, result) = "/api/1/vehicles".httpGet()
         .header("Authorization" to "Bearer $token")
         .responseString()
@@ -75,7 +75,7 @@ fun getVehicle(token: String, vehicleId: String): CarOverview {
         200 -> {
             val data = Parser().parse(StringBuilder(result.get())) as JsonObject
             val vehicleObj = data.array<JsonObject>("response")!!.filter { vehicle: JsonObject ->
-                vehicle.string("id_s")!! == vehicleId
+                vehicle.string("vin")!! == vin
             }.first()
 
             return CarOverview(
@@ -207,17 +207,17 @@ fun main() {
         try {
             var config = Config.get()
             val token = config[Config.accessToken]
-            val vehicleId = config[Config.vehicleId]
+            val vin = config[Config.vin]
 
             println("Getting vehicles...")
-            val vehicle = getVehicle(token, vehicleId)
+            val vehicle = getVehicle(token, vin)
             println(vehicle)
 
             Logs.write("Vehicle Overview: $vehicle")
             if (vehicle.state == "asleep") {
                 // If we have been sleeping, no need to try to sleep now
                 transaction {
-                    Config.update({ Config.vehicleId eq vehicleId }) {
+                    Config.update({ Config.vin eq vin }) {
                         it[tryToSleepSince] = null
                     }
                 }
@@ -252,7 +252,7 @@ fun main() {
                             .lastOrNull()
                     if (lastStatus != null && lastStatus[Metrics.state] == "asleep") {
                         Logs.write("The car just woke up. Blocking sleep for 30mins")
-                        Config.update({ Config.vehicleId eq vehicleId }) {
+                        Config.update({ Config.vin eq vin }) {
                             it[blockSleepUntil] = DateTime.now().plusMinutes(30)
                             it[tryToSleepSince] = null
                         }
@@ -266,7 +266,7 @@ fun main() {
                 // if it has expired, clean it up
                 if (minsLeft < 0) {
                     transaction {
-                        Config.update({ Config.vehicleId eq vehicleId }) {
+                        Config.update({ Config.vin eq vin }) {
                             it[blockSleepUntil] = null
                         }
                     }
@@ -287,7 +287,7 @@ fun main() {
                 if (tryToSleepDuration >= tryToSleepLength) {
                     Logs.write("Cleaning up sleep mode")
                     transaction {
-                        Config.update({ Config.vehicleId eq vehicleId }) {
+                        Config.update({ Config.vin eq vin }) {
                             it[tryToSleepSince] = null
                         }
                     }
@@ -308,7 +308,7 @@ fun main() {
             // right after unplugging due to no movement.
             if (vehicleStatus.charging) {
                 Logs.write("The car is charging. Keep blocking sleep for 30mins")
-                Config.update({ Config.vehicleId eq vehicleId }) {
+                Config.update({ Config.vin eq vin }) {
                     it[blockSleepUntil] = DateTime.now().plusMinutes(30)
                     it[tryToSleepSince] = null
                 }
@@ -335,7 +335,7 @@ fun main() {
             if (vehicleStatus.mileage == mileageWhileAgo && tryToSleepDuration == null && blockSleepRemaining <= 0 && !vehicleStatus.charging) {
                 Logs.write("Turn on sleep mode")
                 transaction {
-                    Config.update({ Config.vehicleId eq vehicleId }) {
+                    Config.update({ Config.vin eq vin }) {
                         it[tryToSleepSince] = DateTime.now()
                     }
                 }
@@ -349,14 +349,14 @@ fun main() {
         } catch (e: UnauthorizedException) {
             if (!triedRefresh) {
                 val config = Config.get()
-                val vehicleId = config[Config.vehicleId]
+                val vin = config[Config.vin]
                 val tokenRefresh = config[Config.refreshToken]
 
                 Logs.write("Refreshing token")
                 println("Refresh token...")
                 val (newAccessToken, newRefreshToken) = refreshToken(tokenRefresh)
                 transaction {
-                    Config.update({ Config.vehicleId eq vehicleId }) {
+                    Config.update({ Config.vin eq vin }) {
                         it[accessToken] = newAccessToken
                         it[refreshToken] = newRefreshToken
                     }
