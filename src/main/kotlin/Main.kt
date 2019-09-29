@@ -308,9 +308,11 @@ fun main() {
             // right after unplugging due to no movement.
             if (vehicleStatus.charging) {
                 Logs.write("The car is charging. Keep blocking sleep for 30mins")
-                Config.update({ Config.vin eq vin }) {
-                    it[blockSleepUntil] = DateTime.now().plusMinutes(30)
-                    it[tryToSleepSince] = null
+                transaction {
+                    Config.update({ Config.vin eq vin }) {
+                        it[blockSleepUntil] = DateTime.now().plusMinutes(30)
+                        it[tryToSleepSince] = null
+                    }
                 }
             }
 
