@@ -7,15 +7,8 @@ import com.github.kittinunf.fuel.httpPost
 import db.Config
 import db.Logs
 import db.Metrics
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import org.joda.time.DateTime
 import org.joda.time.Duration
 
@@ -173,8 +166,8 @@ fun annotateCharging(charging: Boolean) {
 
     val wasCharging = transaction {
         val lastStatus = Metrics.selectAll()
-            .sortedByDescending { Metrics.timestamp }
-            .lastOrNull()
+            .orderBy(Metrics.timestamp to SortOrder.DESC)
+            .firstOrNull()
         if (lastStatus != null) {
             lastStatus[Metrics.charging]
         } else {
@@ -227,8 +220,9 @@ fun main() {
                 // Continue to wake up the car if it's more than 6 hours since last ping
                 val shouldContinue = transaction {
                     val lastStatus =
-                        Metrics.select { (Metrics.state eq "online") }.sortedByDescending { Metrics.timestamp }
-                            .lastOrNull()
+                        Metrics.select { (Metrics.state eq "online") }
+                                .orderBy(Metrics.timestamp to SortOrder.DESC)
+                                .firstOrNull()
                     if (lastStatus != null) {
                         val lastAwakeTime = lastStatus[Metrics.timestamp]
                         val duration = Duration(lastAwakeTime, null)
@@ -250,8 +244,9 @@ fun main() {
                 // If it just wake up, block sleep mode for 30 mins
                 transaction {
                     val lastStatus =
-                        Metrics.selectAll().sortedByDescending { Metrics.timestamp }
-                            .lastOrNull()
+                        Metrics.selectAll()
+                                .orderBy(Metrics.timestamp to SortOrder.DESC)
+                                .firstOrNull()
                     if (lastStatus != null && lastStatus[Metrics.state] == "asleep") {
                         Logs.write("The car just woke up. Blocking sleep for 30mins")
                         Config.update({ Config.vin eq vin }) {
@@ -322,8 +317,8 @@ fun main() {
             val mileageWhileAgo = transaction {
                 val lastStatus = Metrics.select {
                     (Metrics.state eq "online") and (Metrics.timestamp lessEq DateTime.now().minusMinutes(10))
-                }.sortedByDescending { Metrics.timestamp }
-                    .lastOrNull()
+                }.orderBy(Metrics.timestamp to SortOrder.DESC)
+                    .firstOrNull()
                 if (lastStatus != null) {
                     lastStatus[Metrics.mileage]
                 } else {
