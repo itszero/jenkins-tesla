@@ -11,6 +11,7 @@ object Logs : Table() {
 
     fun write(msg: String) {
         transaction {
+            println(msg)
             Logs.insert {
                 it[message] = msg
             }
