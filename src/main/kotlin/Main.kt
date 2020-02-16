@@ -218,6 +218,9 @@ fun main() {
                 }
 
                 // Continue to wake up the car if it's more than 6 hours since last ping
+                // Disabling this for now since Tesla now requires an explicit wake up
+                // and I'm not sure if I want to do that in case of an extended vacation.
+                /*
                 val shouldContinue = transaction {
                     val lastStatus =
                         Metrics.select { (Metrics.state eq "online") }
@@ -232,6 +235,8 @@ fun main() {
                         false
                     }
                 }
+                */
+                val shouldContinue = false
 
                 if (!shouldContinue) {
                     Logs.write("The car is sleeping, exit.")
